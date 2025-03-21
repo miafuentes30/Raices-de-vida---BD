@@ -184,6 +184,7 @@ INSERT INTO Casos_Criticos (id_nino, id_familia, fecha_deteccion, descripcion, n
 (20, 7, '2023-07-10', 'Posible caso de tuberculosis', 'Alto', 'Tos crónica, pérdida de peso, sudoración nocturna', 'Exámenes diagnósticos, aislamiento preventivo', 'Detectado', 3, 'ONG', '2023-07-22 16:30:00', NULL, 'Pendiente confirmación diagnóstica', TRUE);
 
 
+-- Consultas generales
 SELECT * FROM actividades;
 SELECT * FROM casos_criticos;
 SELECT * FROM comunidades;
@@ -197,4 +198,35 @@ SELECT * FROM registros;
 SELECT * FROM reportes;
 SELECT * FROM usuarios;
 SELECT * FROM voluntarios;
+
+-- Consulta: Nombre de esposo/a de una comunidad
+SELECT f.nombre_esposo, f.nombre_esposa, c.nombre_comunidad 
+FROM Familias f
+JOIN Comunidades c ON f.id_comunidad = c.id_comunidad;
+
+-- Consulta: Verificar el DPI del esposo 
+SELECT nombre_esposo, dpi_esposo FROM Familias;
+
+-- Consulta: Comunidades ordenadas alfabeticamente
+SELECT * FROM Comunidades ORDER BY nombre_comunidad ASC;
+
+-- Consulta: Nombre del voluntario y ONG donde brinda su apoyo.
+SELECT r.id_registro, v.nombre AS nombre_voluntario, o.nombre_ong, r.tipo_ayuda, r.fecha_registro
+FROM Registros r
+JOIN Voluntarios v ON r.id_voluntario = v.id_voluntario
+JOIN ONGs o ON r.id_ong = o.id_ong;
+
+-- Consulta: Cantidad de familias por cada comunidad
+SELECT c.nombre_comunidad, COUNT(f.id_familia) AS total_familias
+FROM Comunidades c
+LEFT JOIN Familias f ON c.id_comunidad = f.id_comunidad
+GROUP BY c.nombre_comunidad
+ORDER BY total_familias DESC;
+
+-- Consulta: cantidad de donaciones que ha echo una ong
+SELECT o.nombre_ong, COUNT(d.id_donacion) AS total_donaciones
+FROM Donaciones d
+JOIN ONGs o ON d.id_ong = o.id_ong
+GROUP BY o.nombre_ong
+ORDER BY total_donaciones DESC;
 
