@@ -1,31 +1,53 @@
+-- Se crea una base de datos que soporte todos los caracteres especiales
+CREATE DATABASE "Proyecto 1" WITH ENCODING 'UTF8' TEMPLATE template0;
+
 -- Todas las claves primarias se cambiaron a Serial para hacerlas autoincrementales.
+-- Las columnas consideradas que estaban en TEXT se actualizan a Varchar de 255 caracteres (incluyendo caracteres especiales) para limitar 
+
+-- Crear tipos de ENUM para reemplazar los CHECK con listas de valores
+CREATE TYPE tipo_referencia_enum AS ENUM ('ONG', 'Voluntario', 'Comunidad');
+CREATE TYPE rol_enum AS ENUM ('ONG', 'Voluntario', 'Líder Comunitario');
+CREATE TYPE estado_nutricional_enum AS ENUM ('Normal', 'Desnutrición Leve', 'Desnutrición Moderada', 'Desnutrición Severa');
+CREATE TYPE genero_enum AS ENUM ('M', 'F');
+CREATE TYPE disponibilidad_enum AS ENUM ('Baja', 'Media', 'Alta');
+CREATE TYPE tipo_ong_enum AS ENUM ('Salud', 'Educación', 'Nutrición', 'Niñez', 'Otro');
+CREATE TYPE tipo_ayuda_enum AS ENUM ('Alimentación', 'Salud', 'Educación', 'Otro');
+CREATE TYPE tipo_actividad_enum AS ENUM ('Capacitación', 'Evaluación', 'Entrega de Ayuda', 'Seguimiento', 'Otro');
+CREATE TYPE tipo_evaluacion_enum AS ENUM ('Nutricional', 'Socioeconómica', 'Salud', 'Educación', 'Otro');
+CREATE TYPE tipo_reporte_enum AS ENUM ('Alerta', 'Seguimiento', 'Evaluación', 'Estadístico', 'Otro');
+CREATE TYPE nivel_urgencia_enum AS ENUM ('Bajo', 'Medio', 'Alto', 'Crítico');
+CREATE TYPE tipo_donacion_enum AS ENUM ('Efectivo', 'Víveres', 'Ropa', 'Otros');
+CREATE TYPE unidad_medida_enum AS ENUM ('Kilogramos', 'Libras', 'Onzas', 'Litros', 'Unidades', 'Otros');
+CREATE TYPE nivel_urgencia_critico_enum AS ENUM ('Alto', 'Crítico');
+CREATE TYPE estado_caso_enum AS ENUM ('Detectado', 'En Atención', 'Derivado', 'Resuelto', 'Seguimiento');
+CREATE TYPE tipo_responsable_enum AS ENUM ('Voluntario', 'ONG');
 
 -- Nueva tabla usuarios: nueva tabla para gestión de usuarios del sistema
 CREATE TABLE Usuarios (
     id_usuario SERIAL PRIMARY KEY,
-    nombre TEXT NOT NULL,
-    apellido TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL CHECK (POSITION('@' IN email) > 0),
-    password TEXT NOT NULL, -- Debe almacenarse encriptada para evitar hackeos
-    rol TEXT CHECK (rol IN ('ONG', 'Voluntario', 'Líder Comunitario')),
+    nombre VARCHAR(255) NOT NULL,
+    apellido VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL CHECK (POSITION('@' IN email) > 0),
+    password VARCHAR(255) NOT NULL, -- Debe almacenarse encriptada para evitar hackeos
+    rol rol_enum,
     fecha_registro DATE DEFAULT CURRENT_DATE,
     ultimo_acceso TIMESTAMP,
     estado BOOLEAN DEFAULT TRUE,
     id_referencia INT, -- ID de la entidad relacionada (ONG, voluntario, lider) segun el tipo_referencia.
-    tipo_referencia TEXT CHECK (tipo_referencia IN ('ONG', 'Voluntario', 'Comunidad'))
+    tipo_referencia tipo_referencia_enum
 );
 
 -- Nueva tabla niños: para seguimiento detallado de niños en riesgo
 CREATE TABLE Ninos (
     id_nino SERIAL PRIMARY KEY,
     id_familia INT NOT NULL,
-    nombre TEXT NOT NULL,
+    nombre VARCHAR(255) NOT NULL,
     fecha_nacimiento DATE NOT NULL CHECK (fecha_nacimiento <= CURRENT_DATE),
-    genero CHAR(1) CHECK (genero IN ('M', 'F')),
+    genero genero_enum,
     peso DOUBLE PRECISION CHECK (peso > 0),
     talla DOUBLE PRECISION CHECK (talla > 0),
     imc DOUBLE PRECISION GENERATED ALWAYS AS (peso / (talla * talla)) STORED,  -- Cálculo automático IMC
-    estado_nutricional TEXT CHECK (estado_nutricional IN ('Normal', 'Desnutrición Leve', 'Desnutrición Moderada', 'Desnutrición Severa')),
+    estado_nutricional estado_nutricional_enum,
     fecha_evaluacion DATE DEFAULT CURRENT_DATE,
     alergias TEXT,
     observaciones TEXT,
@@ -35,8 +57,8 @@ CREATE TABLE Ninos (
 -- Tabla familias: sirve para registrar a las familias de las comunidades.
 CREATE TABLE Familias (
     id_familia SERIAL PRIMARY KEY,
-    nombre_esposo TEXT, 
-    nombre_esposa TEXT,
+    nombre_esposo VARCHAR(255), 
+    nombre_esposa VARCHAR(255),
     dpi_esposo VARCHAR(13) UNIQUE CHECK (LENGTH(dpi_esposo) = 13), -- El DPI debe ser único y verificado que sean 13 dígitos.
     dpi_esposa VARCHAR(13) UNIQUE CHECK (LENGTH(dpi_esposa) = 13),
     fecha_nacimiento_esposo DATE CHECK (fecha_nacimiento_esposo <= CURRENT_DATE), -- Verificar que sea fecha.
@@ -49,65 +71,65 @@ CREATE TABLE Familias (
     rendimiento_maiz DOUBLE PRECISION  CHECK (rendimiento_maiz >= 0),
     area_siembra_frijol DOUBLE PRECISION CHECK (area_siembra_frijol >= 0),
     rendimiento_frijol DOUBLE PRECISION CHECK (rendimiento_frijol >= 0),
-    personal_encargado TEXT DEFAULT '100'
+    personal_encargado VARCHAR(255) DEFAULT '100'
 );
 
 --Tabla voluntarios: Registara la información de los voluntarios quienes brindarán su apoyo a las comunidades.
 CREATE TABLE Voluntarios (
     id_voluntario SERIAL PRIMARY KEY,
-    nombre TEXT NOT NULL, -- Obligatorio
-    apellido TEXT NOT NULL,
+    nombre VARCHAR(255) NOT NULL, -- Obligatorio
+    apellido VARCHAR(255) NOT NULL,
     dpi VARCHAR(13) UNIQUE CHECK (LENGTH(dpi) = 13), --Registra que # de DPI sea unico y de 13 dígitos.
     fecha_nacimiento DATE CHECK (fecha_nacimiento <= CURRENT_DATE), --Verifica que sea una fecha.
     telefono VARCHAR(15) CHECK (LENGTH(telefono) BETWEEN 8 AND 15), --Verifica que el largo del # de telefono sea de 8 a 15 dígitos.
-    email TEXT UNIQUE CHECK (POSITION('@' IN email) > 0), -- Para verificar que es correo electronico debe incluir un arroba.
-    direccion TEXT,
+    email VARCHAR(255) UNIQUE CHECK (POSITION('@' IN email) > 0), -- Para verificar que es correo electronico debe incluir un arroba.
+    direccion VARCHAR(255),
     experiencia TEXT,
-    disponibilidad TEXT CHECK (disponibilidad IN ('Baja', 'Media', 'Alta')), -- Se agrega valores opciones para indicar el nivel de disponibilidad.
-    tipo_voluntario TEXT,
-    institucion TEXT,
+    disponibilidad disponibilidad_enum, -- Se agrega valores opciones para indicar el nivel de disponibilidad.
+    tipo_voluntario VARCHAR(255),
+    institucion VARCHAR(255),
     fecha_registro DATE DEFAULT CURRENT_DATE,
     estado BOOLEAN DEFAULT TRUE,
-	comentarios TEXT,
-	habilidades TEXT -- Validar cuales son las habilidades de los voluntarios para un mejor impacto en sus labores.
+    comentarios TEXT,
+    habilidades TEXT -- Validar cuales son las habilidades de los voluntarios para un mejor impacto en sus labores.
 );
 
 
 CREATE TABLE ONGs (
     id_ong SERIAL PRIMARY KEY NOT NULL,
-    nombre_ong TEXT NOT NULL, -- Obligatorio
-    direccion TEXT NOT NULL,
+    nombre_ong VARCHAR(255) NOT NULL, -- Obligatorio
+    direccion VARCHAR(255) NOT NULL,
     telefono VARCHAR(15) CHECK (LENGTH(telefono) BETWEEN 8 AND 15), -- verifica que el #telefonico tenga un largo de 8 a 15 digitos.
-    email TEXT UNIQUE CHECK (POSITION('@' IN email) > 0), -- si es un correo electronico debe tener un arroba.
-    representante TEXT NOT NULL,
-    tipo_ong TEXT CHECK (tipo_ong IN ('Salud', 'Educación', 'Nutrición', 'Otro')), -- Brinda opciones más especificas.
+    email VARCHAR(255) UNIQUE CHECK (POSITION('@' IN email) > 0), -- si es un correo electronico debe tener un arroba.
+    representante VARCHAR(255) NOT NULL,
+    tipo_ong tipo_ong_enum, -- Brinda opciones más especificas.
     fecha_fundacion DATE CHECK (fecha_fundacion <= CURRENT_DATE), -- verifica que sea fecha.
     mision TEXT,
     vision TEXT,
     estado BOOLEAN DEFAULT TRUE,
     fecha_registro DATE CHECK (fecha_registro<= CURRENT_DATE),
-    sitio_web TEXT DEFAULT '100',
+    sitio_web VARCHAR(255) DEFAULT '100',
     comentarios TEXT,
-    personal_encargado TEXT DEFAULT '100'
+    personal_encargado VARCHAR(255) DEFAULT '100'
 );
 
 CREATE TABLE Comunidades (
     id_comunidad SERIAL PRIMARY KEY NOT NULL,
-    nombre_comunidad TEXT DEFAULT '100',
-    codigo_ine TEXT DEFAULT '10',
-    departamento TEXT DEFAULT '100',
-    municipio TEXT DEFAULT '100',
+    nombre_comunidad VARCHAR(255) DEFAULT '100',
+    codigo_ine VARCHAR(255) DEFAULT '10',
+    departamento VARCHAR(255) DEFAULT '100',
+    municipio VARCHAR(255) DEFAULT '100',
     numero_familias INT,
-    grupo_etnico TEXT DEFAULT '50',
-    tipo_comunidad TEXT DEFAULT '50',
+    grupo_etnico VARCHAR(255) DEFAULT '50',
+    tipo_comunidad VARCHAR(255) DEFAULT '50',
     fecha_registro DATE,
     estado BOOLEAN,
     comentarios TEXT,
-    personal_encargado TEXT DEFAULT '100',
+    personal_encargado VARCHAR(255) DEFAULT '100',
     proyectos_en_comunidad TEXT,
     recursos_disponibles TEXT,
     necesidades_comunidad TEXT,
-	coordenadas_gps TEXT -- Nueva columna para una mejor ubicación de la cominidad
+    coordenadas_gps VARCHAR(255) -- Nueva columna para una mejor ubicación de la cominidad
 );
 
 CREATE TABLE Registros (
@@ -117,30 +139,30 @@ CREATE TABLE Registros (
     id_voluntario INT REFERENCES Voluntarios(id_voluntario) ON DELETE SET NULL,
     id_ong INT REFERENCES ONGs(id_ong) ON DELETE SET NULL,
     fecha_registro DATE DEFAULT CURRENT_DATE,
-    tipo_ayuda TEXT CHECK (tipo_ayuda IN ('Alimentación', 'Salud', 'Educación', 'Otro')), -- Brinda opciones segun el tipo de ayuda.
+    tipo_ayuda tipo_ayuda_enum, -- Brinda opciones segun el tipo de ayuda.
     descripcion_ayuda TEXT,
     estado BOOLEAN DEFAULT TRUE,
     comentarios TEXT,
-    personal_encargado TEXT DEFAULT '100'
+    personal_encargado VARCHAR(255) DEFAULT '100'
 );
 
 CREATE TABLE CResultados (
     id_capacidad SERIAL PRIMARY KEY NOT NULL,
     id_familia INT REFERENCES Familias(id_familia),
-    resultado_evaluacion TEXT NOT NULL, --Obligatorio
+    resultado_evaluacion VARCHAR(255) NOT NULL, --Obligatorio
     descripcion_capacidad TEXT,
-    nivel_capacidad TEXT DEFAULT '50',
+    nivel_capacidad VARCHAR(255) DEFAULT '50',
     fecha_registro DATE,
     estado BOOLEAN,
     comentarios TEXT,
-    personal_encargado TEXT DEFAULT '100',
-    tipo_capacidad TEXT DEFAULT '50',
+    personal_encargado VARCHAR(255) DEFAULT '100',
+    tipo_capacidad VARCHAR(255) DEFAULT '50',
     observaciones TEXT,
     fecha_actualizacion DATE,
     metodo_evaluacion TEXT DEFAULT '100',
     recomendaciones TEXT,
     seguimiento TEXT,
-    tipo_registro TEXT DEFAULT '50'
+    tipo_registro VARCHAR(255) DEFAULT '50'
 );
 
 CREATE TABLE Actividades (
@@ -148,36 +170,36 @@ CREATE TABLE Actividades (
     id_familia INT REFERENCES Familias(id_familia),
     descripcion_actividad TEXT,
     fecha_actividad DATE,
-    duracion TEXT DEFAULT '50',
-    responsable TEXT NOT NULL,
+    duracion VARCHAR(255) DEFAULT '50',
+    responsable VARCHAR(255) NOT NULL,
     estado BOOLEAN DEFAULT TRUE,
     comentarios TEXT,
-    personal_encargado TEXT DEFAULT '100',
-    tipo_actividad TEXT CHECK (tipo_actividad IN ('Capacitación', 'Evaluación', 'Entrega de Ayuda', 'Seguimiento', 'Otro')), -- Opciones para el tipo de actividad
-    resultado TEXT,
+    personal_encargado VARCHAR(255) DEFAULT '100',
+    tipo_actividad tipo_actividad_enum, -- Opciones para el tipo de actividad
+    resultado VARCHAR(255),
     fecha_registro DATE,
-    metodo_evaluacion TEXT DEFAULT '100',
+    metodo_evaluacion VARCHAR(255) DEFAULT '100',
     observaciones TEXT,
     seguimiento TEXT,
-    tipo_registro TEXT DEFAULT '50'
+    tipo_registro VARCHAR(255) DEFAULT '50'
 );
 
 CREATE TABLE Evaluaciones (
     id_evaluacion SERIAL PRIMARY KEY NOT NULL,
     id_familia INT REFERENCES Familias(id_familia),
     fecha_evaluacion DATE DEFAULT CURRENT_DATE,
-    descripcion_evaluacion TEXT NOT NULL,
-    resultado TEXT NOT NULL, -- obligatorio
+    descripcion_evaluacion VARCHAR(255) NOT NULL,
+    resultado VARCHAR(255) NOT NULL, -- obligatorio
     recomendaciones TEXT,
     estado BOOLEAN DEFAULT TRUE,
     comentarios TEXT,
-    personal_encargado TEXT,
+    personal_encargado VARCHAR(255),
     metodo_evaluacion TEXT,
     fecha_registro DATE DEFAULT CURRENT_DATE,
-    tipo_evaluacion TEXT CHECK (tipo_evaluacion IN ('Nutricional', 'Socioeconómica', 'Salud', 'Educación', 'Otro')), -- Opciones
+    tipo_evaluacion tipo_evaluacion_enum, -- Opciones
     observaciones TEXT,
     seguimiento TEXT,
-    tipo_registro TEXT,
+    tipo_registro VARCHAR(255),
     metodo_recoleccion TEXT
 );
 
@@ -185,20 +207,20 @@ CREATE TABLE Reportes (
     id_reporte SERIAL PRIMARY KEY NOT NULL,
     id_familia INT REFERENCES Familias(id_familia),
     fecha_reporte DATE DEFAULT CURRENT_DATE,
-    descripcion_reporte TEXT NOT NULL, -- obligatorio
+    descripcion_reporte VARCHAR(255) NOT NULL, -- obligatorio
     estado BOOLEAN DEFAULT TRUE,
     comentarios TEXT,
-    personal_encargado TEXT,
-    tipo_reporte TEXT CHECK (tipo_reporte IN ('Alerta', 'Seguimiento', 'Evaluación', 'Estadístico', 'Otro')), -- opciones
+    personal_encargado VARCHAR(255),
+    tipo_reporte tipo_reporte_enum, -- opciones
     fecha_registro DATE DEFAULT CURRENT_DATE,
-    metodo_recoleccion TEXT,
+    metodo_recoleccion VARCHAR(255),
     observaciones TEXT,
     seguimiento TEXT,
-    tipo_registro TEXT,
-    resultado TEXT,
+    tipo_registro VARCHAR(255),
+    resultado VARCHAR(255),
     recomendaciones TEXT,
-    metodo_evaluacion TEXT,
-    nivel_urgencia TEXT CHECK (nivel_urgencia IN ('Bajo', 'Medio', 'Alto', 'Crítico'))  -- Nueva columna para validar la grabedar del afectado
+    metodo_evaluacion VARCHAR(255),
+    nivel_urgencia nivel_urgencia_enum  -- Nueva columna para validar la grabedar del afectado
 );
 
 CREATE TABLE Donaciones (
@@ -206,18 +228,18 @@ CREATE TABLE Donaciones (
     id_ong INT REFERENCES ONGs(id_ong) ON DELETE SET NULL, -- si se elimina un registro de la tabla se establecera como null.
     id_voluntario INT REFERENCES Voluntarios(id_voluntario) ON DELETE SET NULL,
     fecha_donacion DATE DEFAULT CURRENT_DATE, 
-    tipo_donacion TEXT CHECK (tipo_donacion IN ('Efectivo', 'Víveres', 'Ropa', 'Otros')), -- brinda opciones según que donación sea.
+    tipo_donacion tipo_donacion_enum, -- brinda opciones según que donación sea.
     cantidad NUMERIC(10,2) CHECK (cantidad > 0),
-    unidad_medida TEXT CHECK (unidad_medida IN ('Kilogramos', 'Libras', 'Onzas', 'Litros', 'Unidades', 'Otros')), -- brinda opciones segun la unidad de medida de la donación.
+    unidad_medida unidad_medida_enum, -- brinda opciones segun la unidad de medida de la donación.
     estado BOOLEAN DEFAULT TRUE,
     comentarios TEXT,
-    personal_encargado TEXT DEFAULT '100',
+    personal_encargado VARCHAR(255) DEFAULT '100',
     Seguimiento INT,
     Capacitaciones INT,
     Proyectos INT,
-	destinatario TEXT,  
-	fecha_entrega DATE,
-	comprobante TEXT
+    destinatario VARCHAR(255),  
+    fecha_entrega DATE,
+    comprobante VARCHAR(255)
 );
 
 -- Nueva tabla Casos Criticos: sirve para las alertas y seguimiento de casos urgentes
@@ -227,12 +249,12 @@ CREATE TABLE Casos_Criticos (
     id_familia INT NOT NULL,
     fecha_deteccion DATE DEFAULT CURRENT_DATE,
     descripcion TEXT NOT NULL,
-    nivel_urgencia TEXT CHECK (nivel_urgencia IN ('Alto', 'Crítico')) NOT NULL,
+    nivel_urgencia nivel_urgencia_critico_enum NOT NULL,
     sintomas TEXT,
-    acciones_tomadas TEXT,
-    estado TEXT CHECK (estado IN ('Detectado', 'En Atención', 'Derivado', 'Resuelto', 'Seguimiento')) NOT NULL,
+    acciones_tomadas VARCHAR(255),
+    estado estado_caso_enum NOT NULL,
     id_responsable INT NOT NULL,      -- ID del responsable (voluntario, ONG)
-    tipo_responsable TEXT CHECK (tipo_responsable IN ('Voluntario', 'ONG')),
+    tipo_responsable tipo_responsable_enum,
     fecha_ultima_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     fecha_resolucion DATE,
     observaciones TEXT,
@@ -267,7 +289,6 @@ ALTER TABLE Casos_Criticos ADD CONSTRAINT FK_Casos_Criticos_Familias
 
 ALTER TABLE Casos_Criticos ADD CONSTRAINT FK_Casos_Criticos_Ninos 
     FOREIGN KEY (id_nino) REFERENCES Ninos(id_nino) ON DELETE SET NULL;
-
 
 -- columna id_comunidad a ONGs
 ALTER TABLE ONGs ADD COLUMN id_comunidad INT;
